@@ -111,12 +111,8 @@
 <div class="modal-overlay hidden" id="parse-modal">
   <div class="modal">
     <h2>줄글로 슬라이드 만들기</h2>
-    <p>업무 내용을 자유롭게 붙여넣으면 자동으로 슬라이드로 나눠드려요.<br>줄바꿈 기준으로 슬라이드가 생성돼요.</p>
-    <textarea id="parse-input" placeholder="예)
-지난주 A 프로젝트 킥오프 완료, 일정 이상 없음
-B 건 클라이언트 피드백 반영 중, 금요일까지 수정본 제출
-이슈: C 업무 인력 부족, 다음 주까지 해결 필요
-이번 주 계획: D 발표 준비, 미팅 2건"></textarea>
+    <p># 제목 으로 슬라이드를 나눠요. 제목 아래 내용을 쓰면 슬라이드 본문이 돼요.</p>
+    <textarea id="parse-input" placeholder="# 채용&#10;채용 공고 3건 진행 중, 면접 일정 조율 중&#10;&#10;# ESG&#10;탄소배출 보고서 작성 완료&#10;&#10;# 이슈&#10;예산 초과 우려, 다음 주까지 해결 필요&#10;&#10;# 이번 주 계획&#10;발표 준비, 미팅 2건"></textarea>
     <div class="modal-btns">
       <button class="btn btn-ghost" onclick="closeParseModal()">취소</button>
       <button class="btn btn-primary" onclick="parseText()">슬라이드 생성</button>
@@ -215,13 +211,28 @@ B 건 클라이언트 피드백 반영 중, 금요일까지 수정본 제출
   function parseText() {
     const text = document.getElementById('parse-input').value.trim();
     if (!text) return;
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-    lines.forEach((line, i) => {
+    let blocks = [];
+    if (text.includes('#')) {
+      const sections = text.split(/\n(?=#)/).map(b => b.trim()).filter(Boolean);
+      sections.forEach(section => {
+        const lines = section.split('\n').map(l => l.trim()).filter(Boolean);
+        const title = lines[0].replace(/^#+\s*/, '');
+        const body = lines.slice(1).join('\n');
+        blocks.push({ title, body });
+      });
+    } else {
+      blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).map(block => {
+        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+        return { title: lines[0], body: lines.slice(1).join('\n') };
+      });
+    }
+    blocks.forEach((block, i) => {
+      const { title: line, body } = block;
       let tag = 'progress';
       if (i === 0) tag = 'summary';
       else if (/이슈|문제|리스크|위험/.test(line)) tag = 'issue';
       else if (/계획|예정|다음 주|이번 주/.test(line)) tag = 'plan';
-      addSlide(line, '', tag);
+      addSlide(line, body, tag);
     });
     document.getElementById('parse-input').value = '';
     closeParseModal();
